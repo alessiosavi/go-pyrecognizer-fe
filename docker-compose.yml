@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  web:
+    image: localhost/go-pyrecognizer-fe
+    depends_on:
+      - redis
+    ports:
+      - "11001:11001"
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
