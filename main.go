@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/alessiosavi/GoGPUtils/helper"
@@ -9,7 +10,7 @@ import (
 	httputils "github.com/alessiosavi/go-pyrecognizer-fe/utils/http"
 	redisutils "github.com/alessiosavi/go-pyrecognizer-fe/utils/redis"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/expvarhandler"
@@ -38,7 +39,7 @@ func main() {
 	}
 
 	log.Debug("Connecting to DB ...")
-	dbClient, err := redisutils.ConnectToDb("", "", 0)
+	dbClient, err := redisutils.Connect("", "", 0)
 	if err != nil {
 		panic(err)
 	}
@@ -99,7 +100,7 @@ func RegisterUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.
 			Data:        nil,
 		}
 	}
-	result, err := client.Exists(username).Result()
+	result, err := client.Exists(context.TODO(), username).Result()
 	if err != nil {
 		return datastructure.Response{
 			Status:      false,
@@ -119,7 +120,7 @@ func RegisterUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.
 	}
 
 	person := datastructure.Person{Username: username, Password: password}
-	if err = client.Set(username, helper.Marshal(person), -1).Err(); err != nil {
+	if err = client.Set(context.TODO(), username, helper.Marshal(person), -1).Err(); err != nil {
 		return datastructure.Response{
 			Status:      false,
 			ErrorCode:   "UNABLE_REGISTER_USER",
@@ -141,7 +142,7 @@ func LoginUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.Res
 			Data:        nil,
 		}
 	}
-	result, err := client.Exists(username).Result()
+	result, err := client.Exists(context.TODO(), username).Result()
 	if err != nil {
 		return datastructure.Response{
 			Status:      false,
@@ -159,7 +160,7 @@ func LoginUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.Res
 		}
 	}
 
-	res, err := client.Get(username).Result()
+	res, err := client.Get(context.TODO(), username).Result()
 	if err != nil {
 		return datastructure.Response{
 			Status:      false,
@@ -198,7 +199,7 @@ func LoginUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.Res
 	//FIXME: go-pyrecognizer-fe have to be replaced with a strong password
 	signedToken, err := token.SignedString([]byte("go-pyrecognizer-fe"))
 
-	if err = client.Set(fmt.Sprintf("%s_token", username), signedToken, time.Hour*24).Err(); err != nil {
+	if err = client.Set(context.TODO(), fmt.Sprintf("%s_token", username), signedToken, time.Hour*24).Err(); err != nil {
 		return datastructure.Response{
 			Status:      false,
 			ErrorCode:   "UNABLE_SET_TOKEN",
@@ -225,7 +226,7 @@ func RemoveUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.Re
 			Data:        nil,
 		}
 	}
-	result, err := client.Exists(username).Result()
+	result, err := client.Exists(context.TODO(), username).Result()
 	if err != nil {
 		return datastructure.Response{
 			Status:      false,
@@ -243,7 +244,7 @@ func RemoveUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.Re
 		}
 	}
 
-	res, err := client.Get(username).Result()
+	res, err := client.Get(context.TODO(), username).Result()
 	if err != nil {
 		return datastructure.Response{
 			Status:      false,
@@ -271,7 +272,7 @@ func RemoveUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.Re
 		}
 	}
 
-	if err = client.Del(username).Err(); err != nil {
+	if err = client.Del(context.TODO(), username).Err(); err != nil {
 		return datastructure.Response{
 			Status:      false,
 			ErrorCode:   "UNABLE_REMOVE_USER",
@@ -280,7 +281,7 @@ func RemoveUser(ctx *fasthttp.RequestCtx, client *redis.Client) datastructure.Re
 		}
 	}
 
-	if err = client.Del(username + "_token").Err(); err != nil {
+	if err = client.Del(context.TODO(), username+"_token").Err(); err != nil {
 		return datastructure.Response{
 			Status:      false,
 			ErrorCode:   "UNABLE_REMOVE_USER_TOKEN",
@@ -308,7 +309,7 @@ func VerifyToken(ctx *fasthttp.RequestCtx, client *redis.Client) (bool, datastru
 		}
 	}
 
-	token, err := client.Get(username + "_token").Result()
+	token, err := client.Get(context.TODO(), username+"_token").Result()
 	if err != nil {
 		return false, datastructure.Response{
 			Status:      false,
